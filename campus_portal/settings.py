@@ -55,7 +55,7 @@ ROOT_URLCONF = "campus_portal.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -66,6 +66,10 @@ TEMPLATES = [
         },
     },
 ]
+# Auth redirects
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 
 WSGI_APPLICATION = "campus_portal.wsgi.application"
 
