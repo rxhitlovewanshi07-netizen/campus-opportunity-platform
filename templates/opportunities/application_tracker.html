@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Application Tracker | Campus Portal{% endblock %}
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <h2>My Application Tracker</h2>
+        <a href="{% url 'opportunities:set_reminder' %}" class="btn btn-outline-primary">Set a Reminder</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header"><strong>Add an opportunity to track</strong></div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button type="submit" class="btn btn-primary">Add to Tracker</button>
+            </form>
+        </div>
+    </div>
+
+    <h3 class="h4 mb-3">Tracked Applications</h3>
+    {% if applications %}
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered table-striped align-middle bg-white">
+                <thead><tr><th>Opportunity</th><th>Organization</th><th>Status</th><th>Applied On</th><th>Notes</th><th>Action</th></tr></thead>
+                <tbody>
+                {% for application in applications %}
+                    <tr>
+                        <td>{{ application.opportunity.title }}</td>
+                        <td>{{ application.opportunity.organization }}</td>
+                        <td>{{ application.get_status_display }}</td>
+                        <td>{{ application.applied_on|date:"d M Y"|default:"—" }}</td>
+                        <td>{{ application.notes|default:"—"|truncatewords:12 }}</td>
+                        <td><a class="btn btn-sm btn-outline-primary" href="{% url 'opportunities:application_update' application.pk %}">Edit</a></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="alert alert-info">You haven't added any applications yet.</p>
+    {% endif %}
+
+    <h3 class="h4 mb-3">My Reminders</h3>
+    {% if reminders %}
+        <div class="table-responsive">
+            <table class="table table-bordered bg-white">
+                <thead><tr><th>Opportunity</th><th>Reminder Date</th><th>Delivery Status</th></tr></thead>
+                <tbody>{% for reminder in reminders %}<tr><td>{{ reminder.opportunity.title }}</td><td>{{ reminder.remind_on|date:"d M Y" }}</td><td>{% if reminder.sent %}Processed{% else %}Pending{% endif %}</td></tr>{% endfor %}</tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted">No reminders set.</p>
+    {% endif %}
+</div>
+{% endblock %}

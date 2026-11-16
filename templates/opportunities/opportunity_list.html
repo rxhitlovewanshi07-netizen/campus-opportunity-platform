@@ -1,0 +1,160 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+    <h2 class="mb-4">Explore Opportunities</h2>
+
+    <div class="row">
+        <!-- Filter Sidebar -->
+        <aside class="col-lg-3 mb-4">
+            <form method="get" class="card card-body shadow-sm">
+                <h5 class="card-title">Filters</h5>
+
+                <div class="mb-3">
+                    <label for="q" class="form-label">Search title</label>
+                    <input type="text" id="q" name="q"
+                           class="form-control"
+                           placeholder="e.g. Internship"
+                           value="{{ filters.q }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="category" class="form-label">Category</label>
+                    <select id="category" name="category"
+                            class="form-select">
+                        <option value="">All categories</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}"
+                                {% if filters.category == cat.id|stringformat:"s" %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="days" class="form-label">
+                        Deadline within (days)
+                    </label>
+                    <input type="number" id="days" name="days"
+                           min="1" class="form-control"
+                           placeholder="e.g. 7"
+                           value="{{ filters.days }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="eligibility" class="form-label">
+                        Eligibility
+                    </label>
+                    <input type="text" id="eligibility" name="eligibility"
+                           class="form-control"
+                           placeholder="e.g. 2nd year"
+                           value="{{ filters.eligibility }}">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-2">
+                    Apply filters
+                </button>
+
+                <a href="{% url 'opportunities:list' %}"
+                   class="btn btn-outline-secondary w-100">
+                    Reset
+                </a>
+            </form>
+        </aside>
+
+        <!-- Opportunity Cards -->
+        <section class="col-lg-9">
+            {% if opportunities %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+                    {% for opp in opportunities %}
+                        <div class="col">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-body">
+                                    <span class="badge text-bg-info mb-2">
+                                        {{ opp.category.name }}
+                                    </span>
+
+                                    <h5 class="card-title">{{ opp.title }}</h5>
+
+                                    <h6 class="card-subtitle mb-2 text-muted">
+                                        {{ opp.organization }}
+                                    </h6>
+
+                                    <p class="card-text">
+                                        {{ opp.description|truncatewords:20 }}
+                                    </p>
+                                </div>
+
+                                <div class="card-footer d-flex justify-content-between align-items-center">
+                                    <small class="text-danger">
+                                        Deadline: {{ opp.deadline|date:"d M Y" }}
+                                    </small>
+
+                                    <div class="d-flex gap-2">
+                                        {% if user.is_authenticated %}
+                                            <form method="post" action="{% url 'opportunities:toggle_bookmark' opp.pk %}" class="m-0">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                                <button type="submit" class="btn btn-sm {% if opp.pk in bookmarked_ids %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                                                    {% if opp.pk in bookmarked_ids %}★ Saved{% else %}☆ Bookmark{% endif %}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <a href="{% url 'opportunities:detail' opp.pk %}" class="btn btn-sm btn-primary">View</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav class="mt-4" aria-label="Page navigation">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link"
+                                       href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">
+                                        Previous
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Previous</span>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link"
+                                       href="?page={{ page_obj.next_page_number }}&{{ querystring }}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+
+            {% else %}
+                <div class="alert alert-warning">
+                    No opportunities match your filters.
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

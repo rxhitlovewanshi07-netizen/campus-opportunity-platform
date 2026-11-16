@@ -1,0 +1,75 @@
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+
+    <a href="{% url 'opportunities:list' %}"
+       class="btn btn-sm btn-outline-secondary mb-3">
+        &larr; Back to opportunities
+    </a>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-4">
+
+            <span class="badge text-bg-info mb-2">
+                {{ opportunity.category.name }}
+            </span>
+
+            <h2>{{ opportunity.title }}</h2>
+
+            <h5 class="text-muted mb-3">
+                {{ opportunity.organization }}
+            </h5>
+
+            <p>
+                <strong>Deadline:</strong>
+                {{ opportunity.deadline|date:"d M Y" }}
+
+                {% if days_left < 0 %}
+                    <span class="badge text-bg-secondary">Closed</span>
+                {% elif days_left <= 7 %}
+                    <span class="badge text-bg-danger">
+                        {{ days_left }} days left
+                    </span>
+                {% else %}
+                    <span class="badge text-bg-success">
+                        {{ days_left }} days left
+                    </span>
+                {% endif %}
+            </p>
+
+            <hr>
+
+            <h5>Description</h5>
+            <p>{{ opportunity.description|linebreaks }}</p>
+
+            <h5>Eligibility</h5>
+            <p>{{ opportunity.eligibility|linebreaks }}</p>
+
+            {% if days_left >= 0 %}
+                <a href="{{ opportunity.link }}" target="_blank" rel="noopener" class="btn btn-primary">
+                    Apply / Visit Link
+                </a>
+            {% endif %}
+
+            {% if user.is_authenticated %}
+                <a href="{% url 'opportunities:application_tracker' %}" class="btn btn-outline-primary">
+                    Track Application
+                </a>
+                <a href="{% url 'opportunities:set_reminder' %}" class="btn btn-outline-secondary">
+                    Set Reminder
+                </a>
+                <form method="post" action="{% url 'opportunities:toggle_bookmark' opportunity.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn btn-outline-warning">
+                        {% if is_bookmarked %}Remove Bookmark{% else %}Bookmark{% endif %}
+                    </button>
+                </form>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
