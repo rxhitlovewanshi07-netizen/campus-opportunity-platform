@@ -93,3 +93,28 @@ class CampusOpportunityTests(TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Reminder.objects.count(), 0)
+
+
+class RegistrationEmailTests(TestCase):
+    def test_registration_form_requires_email(self):
+        from opportunities.forms import RegisterForm
+
+        form = RegisterForm(data={
+            "username": "studentemail",
+            "email": "",
+            "password1": "StrongPass123!",
+            "password2": "StrongPass123!",
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn("email", form.errors)
+
+    def test_registration_form_accepts_email(self):
+        from opportunities.forms import RegisterForm
+
+        form = RegisterForm(data={
+            "username": "studentemail",
+            "email": "student@example.com",
+            "password1": "StrongPass123!",
+            "password2": "StrongPass123!",
+        })
+        self.assertTrue(form.is_valid(), form.errors)

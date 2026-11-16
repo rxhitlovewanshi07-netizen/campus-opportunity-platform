@@ -7,6 +7,7 @@ from opportunities import views
 urlpatterns = [
     path("admin/", admin.site.urls),  # admin dashboard
     path("", views.home, name="home"),
+    path("dashboard/", views.dashboard, name="dashboard"),
     path("register/", views.register, name="register"),
     # Built-in auth views
     path("opportunities/", include("opportunities.urls")),

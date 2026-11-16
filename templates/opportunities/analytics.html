@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4" style="font-size: 1rem;">
+  <h1 class="h3 mb-4">Analytics</h1>
+
+  <div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{{ stats.total_opportunities }}</div><div class="text-muted">Opportunities</div></div></div></div>
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{{ stats.published }}</div><div class="text-muted">Published</div></div></div></div>
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{{ stats.users }}</div><div class="text-muted">Users</div></div></div></div>
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{{ stats.applications }}</div><div class="text-muted">Applications</div></div></div></div>
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{{ stats.bookmarks }}</div><div class="text-muted">Bookmarks</div></div></div></div>
+    <div class="col"><div class="card h-100 text-center shadow-sm"><div class="card-body"><div class="fs-3 fw-semibold">{% if outcome_rate is None %}N/A{% else %}{{ outcome_rate }}%{% endif %}</div><div class="text-muted">Outcome rate</div><div class="small text-muted">accepted / decided</div></div></div></div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-12 col-lg-7"><div class="card shadow-sm h-100"><div class="card-header fw-semibold">Opportunities per category</div><div class="card-body"><div style="position: relative; height: 320px;"><canvas id="categoryChart"></canvas></div></div></div></div>
+    <div class="col-12 col-lg-5"><div class="card shadow-sm h-100"><div class="card-header fw-semibold">Application status</div><div class="card-body"><div style="position: relative; height: 320px;"><canvas id="statusChart"></canvas></div></div></div></div>
+    <div class="col-12"><div class="card shadow-sm"><div class="card-header fw-semibold">Applications updated (last 30 days)</div><div class="card-body"><div style="position: relative; height: 320px;"><canvas id="activityChart"></canvas></div></div></div></div>
+  </div>
+
+  <div class="card shadow-sm"><div class="card-header fw-semibold">Top 5 most bookmarked opportunities</div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th scope="col">#</th><th scope="col">Opportunity</th><th scope="col">Category</th><th scope="col" class="text-end">Bookmarks</th></tr></thead><tbody>
+    {% for row in top_bookmarked %}<tr><td>{{ forloop.counter }}</td><td>{{ row.opportunity__title }}</td><td>{{ row.opportunity__category__name|default:"-" }}</td><td class="text-end">{{ row.n }}</td></tr>{% empty %}<tr><td colspan="4" class="text-center text-muted py-3">No bookmarks yet.</td></tr>{% endfor %}
+  </tbody></table></div></div>
+</div>
+
+{{ chart_data|json_script:"chart-data" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  var data = JSON.parse(document.getElementById("chart-data").textContent);
+  Chart.defaults.font.size = 14;
+  Chart.defaults.color = "#343a40";
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.responsive = true;
+  var palette = ["#0d6efd", "#6c757d", "#ffc107", "#198754", "#dc3545", "#fd7e14", "#6f42c1", "#20c997", "#0dcaf0", "#d63384"];
+  var legend = { display: true, labels: { font: { size: 14 }, padding: 14 } };
+  var integerY = { beginAtZero: true, ticks: { precision: 0, font: { size: 13 } } };
+  new Chart(document.getElementById("categoryChart"), { type: "bar", data: { labels: data.categories.labels, datasets: [{ label: "Opportunities", data: data.categories.values, backgroundColor: "#0d6efd" }] }, options: { plugins: { legend: legend }, scales: { y: integerY, x: { ticks: { font: { size: 13 } } } } } });
+  new Chart(document.getElementById("statusChart"), { type: "doughnut", data: { labels: data.status.labels, datasets: [{ data: data.status.values, backgroundColor: palette.slice(0, data.status.labels.length) }] }, options: { plugins: { legend: Object.assign({ position: "bottom" }, legend) } } });
+  new Chart(document.getElementById("activityChart"), { type: "line", data: { labels: data.activity.labels, datasets: [{ label: "Applications updated", data: data.activity.values, borderColor: "#198754", backgroundColor: "rgba(25, 135, 84, 0.15)", fill: true, tension: 0.3, pointRadius: 3 }] }, options: { plugins: { legend: legend }, scales: { y: integerY, x: { ticks: { font: { size: 12 }, maxTicksLimit: 10, autoSkip: true } } } } });
+})();
+</script>
+{% endblock %}

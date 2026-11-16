@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Recommended for you{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h3 mb-0">Recommended for you</h1>
+  <a href="{% url 'opportunities:list' %}" class="btn btn-outline-primary btn-sm">Browse all</a>
+</div>
+
+{% if recommendations %}
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for opp, score, reasons in recommendations %}
+      <div class="col d-flex flex-column">
+        {% include "partials/opportunity_card.html" with opp=opp bookmarked_ids=bookmarked_ids %}
+        <div class="border border-top-0 rounded-bottom bg-light px-3 py-2 small h-100">
+          <div class="fw-semibold mb-1">
+            Why this?
+            {% if score %}<span class="badge text-bg-primary ms-1">Match {{ score }}</span>{% endif %}
+          </div>
+          <ul class="mb-0 ps-3">
+            {% for reason in reasons %}<li>{{ reason }}</li>{% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="alert alert-info">
+    No recommendations right now. Check back when new opportunities are published.
+  </div>
+{% endif %}
+{% endblock %}

@@ -13,20 +13,40 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load local/server environment variables from .env when present.
+# Production secrets should be stored in .env or the hosting provider's environment.
+load_dotenv(BASE_DIR / ".env")
+
+
+def env_bool(name, default):
+    return os.environ.get(name, str(default)).strip().lower() in ("1", "true", "yes", "on")
+
+
+def env_list(name, default=""):
+    return [value.strip() for value in os.environ.get(name, default).split(",") if value.strip()]
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-local-development-key-change-before-deployment")
+# Local development defaults are intentionally convenient; production must set
+# DJANGO_SECRET_KEY, DJANGO_DEBUG=False, and DJANGO_ALLOWED_HOSTS in the environment.
+DEBUG = env_bool("DJANGO_DEBUG", True)
+SECRET_KEY = os.environ.get(
+    "DJANGO_SECRET_KEY",
+    "django-insecure-local-development-key-change-before-deployment",
+)
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+if not DEBUG and SECRET_KEY == "django-insecure-local-development-key-change-before-deployment":
+    raise RuntimeError("Set DJANGO_SECRET_KEY to a strong secret in production.")
 
 
 # Application definition
@@ -69,8 +89,8 @@ TEMPLATES = [
 ]
 # Auth redirects
 LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "home"
-LOGOUT_REDIRECT_URL = "login"
+LOGIN_REDIRECT_URL = "dashboard"
+LOGOUT_REDIRECT_URL = "opportunities:list"
 
 WSGI_APPLICATION = "campus_portal.wsgi.application"
 
@@ -121,13 +141,33 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
 # Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# Credentials are read from environment variables and must never be committed.
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("1", "true", "yes")
 
-MAILERS = {
-    "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
-    },
-}
+# Use SMTP only when credentials are configured, unless a backend is explicitly set.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.smtp.EmailBackend"
+    if (EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+    else "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@campus-portal.local"
+)
+SITE_URL = os.environ.get("SITE_URL", "http://127.0.0.1:8000")
+
+
+# Secure cookies when DEBUG is disabled. Enable HTTPS redirection at the host
+# (PythonAnywhere Web tab: Force HTTPS) to avoid proxy redirect loops.
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

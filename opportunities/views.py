@@ -1,25 +1,22 @@
 from datetime import timedelta
 
+from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
+from django.db.models import Count, Q
+from django.db.models.functions import TruncDate
+
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView
 
-from .forms import ApplicationForm, ApplicationUpdateForm, ReminderForm
+from .forms import ApplicationForm, ApplicationUpdateForm, RegisterForm, ReminderForm
 from .models import Application, Bookmark, Category, Opportunity, Reminder
-
-
-class StyledUserCreationForm(UserCreationForm):
-    """UserCreationForm with Bootstrap classes on every input."""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-            field.widget.attrs["class"] = "form-control"
+from .recommend import recommend_for
 
 
 class OpportunityListView(ListView):
@@ -146,16 +143,159 @@ def set_reminder(request):
 
 def register(request):
     if request.method == "POST":
-        form = StyledUserCreationForm(request.POST)
+        form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect("home")
     else:
-        form = StyledUserCreationForm()
+        form = RegisterForm()
     return render(request, "registration/register.html", {"form": form})
+
+@login_required
+def dashboard(request):
+    """Show a summary of the signed-in student's campus activity."""
+    today = timezone.localdate()
+    application_count = Application.objects.filter(user=request.user).count()
+    bookmarks_count = Bookmark.objects.filter(user=request.user).count()
+    reminders_count = Reminder.objects.filter(
+        user=request.user, sent=False, remind_on__gte=today
+    ).count()
+    upcoming_opportunities = (
+        Opportunity.objects.filter(is_published=True, deadline__gte=today)
+        .select_related("category")
+        .order_by("deadline")[:5]
+    )
+    recent_applications = (
+        Application.objects.filter(user=request.user)
+        .select_related("opportunity", "opportunity__category")
+        .order_by("-id")[:5]
+    )
+    return render(
+        request,
+        "dashboard.html",
+        {
+            "application_count": application_count,
+            "bookmarks_count": bookmarks_count,
+            "reminders_count": reminders_count,
+            "upcoming_opportunities": upcoming_opportunities,
+            "recent_applications": recent_applications,
+        },
+    )
 
 
 @login_required
 def home(request):
     return redirect("opportunities:list")
+
+
+@login_required
+def recommended(request):
+    recommendations = recommend_for(request.user, limit=6, today=timezone.localdate())
+    bookmarked_ids = set(
+        Bookmark.objects.filter(user=request.user).values_list("opportunity_id", flat=True)
+    )
+    return render(
+        request,
+        "opportunities/recommended.html",
+        {
+            "recommendations": recommendations,
+            "bookmarked_ids": bookmarked_ids,
+        },
+    )
+
+
+STATUS_LABELS = {
+    "saved": "Saved",
+    "applied": "Applied",
+    "under_review": "Under review",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "withdrawn": "Withdrawn",
+}
+
+
+def calc_outcome_rate(accepted, rejected):
+    """Return accepted / (accepted + rejected) as a percentage."""
+    decided = accepted + rejected
+    if decided == 0:
+        return None
+    return round(accepted / decided * 100, 1)
+
+
+@login_required
+def analytics(request):
+    """Display platform-wide analytics to staff users only."""
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    opportunity_totals = Opportunity.objects.aggregate(
+        total=Count("id"),
+        published=Count("id", filter=Q(is_published=True)),
+    )
+    stats = {
+        "total_opportunities": opportunity_totals["total"],
+        "published": opportunity_totals["published"],
+        "users": get_user_model().objects.count(),
+        "applications": Application.objects.count(),
+        "bookmarks": Bookmark.objects.count(),
+    }
+
+    category_rows = (
+        Opportunity.objects.values("category__name")
+        .annotate(n=Count("id"))
+        .order_by("category__name")
+    )
+    status_counts = {
+        row["status"]: row["n"]
+        for row in Application.objects.values("status").annotate(n=Count("id"))
+    }
+
+    today = timezone.localdate()
+    start = today - timedelta(days=29)
+    daily_counts = {
+        row["day"]: row["n"]
+        for row in (
+            Application.objects.filter(updated_at__date__gte=start)
+            .annotate(day=TruncDate("updated_at"))
+            .values("day")
+            .annotate(n=Count("id"))
+        )
+    }
+    days = [start + timedelta(days=i) for i in range(30)]
+
+    top_bookmarked = (
+        Bookmark.objects.values(
+            "opportunity__id", "opportunity__title", "opportunity__category__name"
+        )
+        .annotate(n=Count("id"))
+        .order_by("-n", "opportunity__title")[:5]
+    )
+
+    chart_data = {
+        "categories": {
+            "labels": [row["category__name"] or "Uncategorised" for row in category_rows],
+            "values": [row["n"] for row in category_rows],
+        },
+        "status": {
+            "labels": list(STATUS_LABELS.values()),
+            "values": [status_counts.get(key, 0) for key in STATUS_LABELS],
+        },
+        "activity": {
+            "labels": [day.strftime("%d %b") for day in days],
+            "values": [daily_counts.get(day, 0) for day in days],
+        },
+    }
+
+    return render(
+        request,
+        "opportunities/analytics.html",
+        {
+            "stats": stats,
+            "outcome_rate": calc_outcome_rate(
+                status_counts.get("accepted", 0), status_counts.get("rejected", 0)
+            ),
+            "top_bookmarked": top_bookmarked,
+            "chart_data": chart_data,
+        },
+    )

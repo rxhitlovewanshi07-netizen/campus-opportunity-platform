@@ -46,3 +46,6 @@ python manage.py test opportunities
 ## Security notes
 
 The included SQLite database is for local development only and should not be committed or published. `DJANGO_SECRET_KEY` should be set to a private, randomly generated value outside local development. Set `DEBUG=False`, configure `ALLOWED_HOSTS`, and configure real email delivery before deployment.
+## Email reminders
+
+Email reminders use the console backend by default. To enable Gmail SMTP, follow the setup instructions in [docs/EMAIL_SETUP.md](docs/EMAIL_SETUP.md). Keep SMTP credentials in environment variables; never commit them.

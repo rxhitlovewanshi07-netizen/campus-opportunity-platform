@@ -1,0 +1,23 @@
+<div class="card h-100 shadow-sm">
+  <div class="card-body">
+    <span class="badge text-bg-info mb-2">{{ opp.category.name }}</span>
+    <h5 class="card-title">{{ opp.title }}</h5>
+    <h6 class="card-subtitle mb-2 text-muted">{{ opp.organization }}</h6>
+    <p class="card-text">{{ opp.description|truncatewords:20 }}</p>
+  </div>
+  <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <small class="text-danger">Deadline: {{ opp.deadline|date:"d M Y" }}</small>
+    <div class="d-flex gap-2">
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'opportunities:toggle_bookmark' opp.pk %}" class="m-0">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="btn btn-sm {% if opp.pk in bookmarked_ids %}btn-warning{% else %}btn-outline-warning{% endif %}">
+            {% if opp.pk in bookmarked_ids %}★ Saved{% else %}☆ Bookmark{% endif %}
+          </button>
+        </form>
+      {% endif %}
+      <a href="{% url 'opportunities:detail' opp.pk %}" class="btn btn-sm btn-primary">View</a>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Dashboard | Campus Portal{% endblock %}
+{% block content %}
+<section class="page-section">
+  <div class="page-header">
+    <div><h1>Welcome back, {{ user.get_username }}</h1><p class="text-muted mb-0">Your campus opportunities at a glance.</p></div>
+    <a class="btn btn-primary" href="{% url 'opportunities:list' %}">Browse opportunities</a>
+  </div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-4"><a class="stat-card" href="{% url 'opportunities:application_tracker' %}"><span class="stat-card__icon">📋</span><span><span class="stat-card__value d-block">{{ application_count }}</span><span class="stat-card__label">Tracked applications</span></span></a></div>
+    <div class="col-md-4"><a class="stat-card" href="{% url 'opportunities:my_bookmarks' %}"><span class="stat-card__icon">🔖</span><span><span class="stat-card__value d-block">{{ bookmarks_count }}</span><span class="stat-card__label">Bookmarks</span></span></a></div>
+    <div class="col-md-4"><a class="stat-card" href="{% url 'opportunities:application_tracker' %}"><span class="stat-card__icon">🔔</span><span><span class="stat-card__value d-block">{{ reminders_count }}</span><span class="stat-card__label">Pending reminders</span></span></a></div>
+  </div>
+  <div class="row g-4">
+    <div class="col-lg-6"><section class="panel"><h2 class="panel-title">Upcoming deadlines</h2>
+      {% for opportunity in upcoming_opportunities %}
+        <div class="deadline-row"><a href="{% url 'opportunities:detail' opportunity.pk %}">{{ opportunity.title }}</a><span class="small">{{ opportunity.deadline|date:"d M Y" }}</span></div>
+      {% empty %}<p class="text-muted mb-0">No upcoming opportunities at the moment.</p>{% endfor %}
+    </section></div>
+    <div class="col-lg-6"><section class="panel"><h2 class="panel-title">Recent applications</h2>
+      {% for application in recent_applications %}
+        <div class="deadline-row"><span><strong>{{ application.opportunity.title }}</strong><br><span class="small">{{ application.opportunity.organization }}</span></span><span class="badge text-bg-primary">{{ application.get_status_display }}</span></div>
+      {% empty %}<p class="text-muted mb-0">You haven't tracked any applications yet.</p>{% endfor %}
+    </section></div>
+  </div>
+</section>
+{% endblock %}
